@@ -5378,9 +5378,9 @@ const intlTo=tr=>tr.L&&tr.L.towards&&tr.L.towards[tr.pe?tr.pe.d:0];
 const _spawnN8=spawn;
 spawn=function(p){const tr=_spawnN8(p);if(!tr||G.warm||!p.L.intl)return tr;
   const from=p.L.from&&p.L.from[p.d];
-  if(from){const r=Math.random();const m=r<.5?rnd(0,3):r<.8?rnd(4,14):rnd(15,48);
+  if(from){const r=Math.random();let m=r<.5?rnd(0,3):r<.8?rnd(4,14):rnd(15,48);if(p.impD!=null)m=p.impD;
     if(m>=2){tr.busyUntil=Math.max(tr.busyUntil||0,tr.dep[0]+m*60);tr.busyWhy=`Retard en provenance ${ABROAD[from]||"de l'étranger"} (${from})`;tr.foreign=true;}
-    if(m>=15&&inRegSt(tr.route[0]))setTimeout(()=>{if(tr.state!=="done")openInc("intl",{train:tr.id,pe:p.id,station:tr.route[0],min:Math.round(m),note:`${tr.label} en provenance de ${from} annoncé avec ${Math.round(m)} min de retard à ${SN(tr.route[0])}`});},0);}
+    if(m>=15&&inRegSt(tr.route[0])&&!p.impWarned)setTimeout(()=>{if(tr.state!=="done")openInc("intl",{train:tr.id,pe:p.id,station:tr.route[0],min:Math.round(m),note:`${tr.label} en provenance de ${from} annoncé avec ${Math.round(m)} min de retard à ${SN(tr.route[0])}`});},0);}
   return tr;};
 const _incActionsN8=incActions;
 incActions=function(inc){
@@ -5414,7 +5414,7 @@ decStrategies=function(inc){
     else S.push({t:"Informer et laisser circuler",keys:["ann","radio"],pros:["Circulation maintenue autour du chantier"],cons:[W&&W.kind==="single"?"Voie unique : croisements, ≈ +5 à 10 min":"Ralentissement de chantier"],rec:true});
     return S;}
   return _decStratN8(inc);};
-const _tickN8a=tick;tick=function(dt){_tickN8a(dt);if(G.warm)return;for(const inc of G.inc)if(inc.type==="intl"&&inc.status!=="closed"){const tr=TR(inc.train);if(!tr||tr.state!=="wait")closeInc(inc,"Train parti");}};
+const _tickN8a=tick;tick=function(dt){_tickN8a(dt);if(G.warm)return;for(const inc of G.inc)if(inc.type==="intl"&&inc.status!=="closed"){if(inc.est&&!inc.train){const pp=PE(inc.pe);if(!pp||pp.cx||pp.gone)closeInc(inc,"Train supprimé");continue;}const tr=TR(inc.train);if(!tr||tr.state!=="wait")closeInc(inc,"Train parti");}};
 
 /* ---------- travaux planifiés ---------- */
 G.works=[];
@@ -6548,7 +6548,7 @@ const _actExtN18=actExt;actExt=function(k,rest,id){
   }
   return _actExtN18(k,rest,id);};
 // quai trop court à l'arrivée : si malgré tout le train est trop long, arrêt prolongé (voyageurs guidés vers les bonnes voitures)
-const _arriveN18=arrive;arrive=function(tr){const r=_arriveN18(tr);try{if(tr&&tr.state==="wait"&&MAT[tr.mat].seats){const st=tr.route[tr.idx];if(tr.stops.has(st)&&!tr.skip.has(st)){const pl=ST[st].plLen||420;const L=trainLen(tr);
+const _arriveN18=arrive;arrive=function(tr){const r=_arriveN18(tr);try{if(tr&&tr.state==="wait"&&MAT[tr.mat].seats){const st=tr.route[tr.idx];if(tr.stops.has(st)&&!tr.skip.has(st)){const pl=1e9;const L=trainLen(tr);
   if(L>pl+10&&!G.warm){tr.busyUntil=Math.max(tr.busyUntil||0,G.t+90);tr.busyWhy="Train plus long que le quai : portes verrouillées à l'arrière";if(!tr._lenWarn||G.t-tr._lenWarn>3600){tr._lenWarn=G.t;log(`${tr.label} (${L} m) dépasse le quai de ${SN(st)} (${pl} m) : certaines voitures restent portes fermées, +1,5 min`,"warn");G.sat=Math.max(0,G.sat-1);}}}}}catch(e){}return r;};
 // aide-mémoire dans la fiche gare
 const _cardStN18=cardSt;cardSt=function(c){let h=_cardStN18(c);if(!ST[c])return h;return h.replace('<h2 class="sec">Signaux','<div class="small muted" style="margin:4px 0">Longueur utile des quais : <b>'+(ST[c].plLen||420)+' m</b></div><h2 class="sec">Signaux');};
@@ -8615,7 +8615,7 @@ const _renderResN50=renderRes;renderRes=function(){_renderResN50();if(UI.resTab!
 function renfOtherMats(tr,st){const s=G.stock[st]||{};return Object.keys(s).filter(m=>m!==tr.mat&&MAT[m].seats&&s[m]>=1&&GAUGE(m)===GAUGE(tr.mat));}
 function renfOther(tr,st,mat){const M=MAT[mat];if(!tr||!M||!(G.stock[st]&&G.stock[st][mat]>=1))return "Pas de rame "+(M?M.n:mat)+" à "+SN(st);
   const k=tr.route.indexOf(st);if(k<0||(tr.state==="run"&&k<=tr.idx)||(tr.state==="wait"&&k<tr.idx))return "Gare déjà passée";
-  if(typeof trainLen==="function"&&typeof plLen==="function"){const extra=(ULEN[mat]||100);if(trainLen(tr)+extra>plLen(st)+20)return `Trop long pour les quais de ${SN(st)} (${Math.round(trainLen(tr)+extra)} m)`;}
+  if(typeof trainLen==="function"&&typeof plLen==="function"){const extra=(ULEN[mat]||100);if(false)return `Trop long pour les quais de ${SN(st)} (${Math.round(trainLen(tr)+extra)} m)`;}
   G.stock[st][mat]--;tr.renfOther=(tr.renfOther||[]).concat([{mat,st,seats:M.seats}]);tr.extraSeats=(tr.extraSeats||0)+M.seats;
   if(tr.state==="wait"&&tr.route[tr.idx]===st){tr.busyUntil=Math.max(tr.busyUntil||0,G.t+(M.shunt||6)*60);tr.busyWhy="Accouplement d'une rame "+M.n;}
   else{tr.renfAt=(tr.renfAt||[]).concat([{st,mat}]);}
@@ -8639,7 +8639,7 @@ const _actExtN50=actExt;actExt=function(k,rest,id){
    décision, avec l'effet (± points) mesuré 10 min après la décision.
    ===================================================================== */
 G.undo=null;
-function undoSnap(label){if(G.warm||!G.started||G.client)return;try{G.undo={at:performance.now(),t:G.t,label,S:JSON.parse(JSON.stringify(serialize()))};undoShow();}catch(e){}}
+function undoSnap(label){return;/* annulation désactivée */if(G.warm||!G.started||G.client)return;try{G.undo={at:performance.now(),t:G.t,label,S:JSON.parse(JSON.stringify(serialize()))};undoShow();}catch(e){}}
 function undoShow(){let b=$("#undoBar");if(!b){b=document.createElement("div");b.id="undoBar";b.style.cssText="position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.25);padding:6px 10px;display:flex;gap:8px;align-items:center;font-size:13px;max-width:92vw";document.body.appendChild(b);}
   b.hidden=false;b.innerHTML=`<span class="grow ell">Décision : <b>${esc(G.undo.label||"")}</b></span><button class="btn" data-a="undo-go">↶ Annuler <small id="undoLeft">30 s</small></button><button class="btn ghost" data-a="undo-hide">✕</button>`;}
 setInterval(()=>{const U=G.undo;const b=$("#undoBar");if(!U){if(b)b.hidden=true;return;}const left=30-(performance.now()-U.at)/1000;if(left<=0){G.undo=null;if(b)b.hidden=true;return;}const s=$("#undoLeft");if(s)s.textContent=Math.ceil(left)+" s";},500);
@@ -8896,86 +8896,6 @@ const _actExtN55=actExt;actExt=function(k,rest,id){if(k==="sim-alarm"){const tr=
 const _annForIncN55=annForInc;annForInc=function(inc){if(inc.type==="alarme")return;return _annForIncN55(inc);};
 const _serializeN55=serialize;serialize=function(){const S=_serializeN55();S.n55=G.trains.filter(t=>t.alarm).map(t=>[t.id,t.alarm]);return S;};
 const _applySaveN55=applySave;applySave=function(S){_applySaveN55(S);for(const [id,al] of (S.n55||[])){const t=TR(id);if(t)t.alarm=al;}};
-/* =====================================================================
-   QUAIS COURTS / TRAIN TROP LONG : quand une rame renforcée ou jumelée
-   dépasse un quai, tu décides halte par halte : ouverture sélective des
-   portes (annonce « montez dans les N premières voitures »), suppression
-   de l'arrêt (annonce, voyageurs reportés) ou dételage avant. Le renfort
-   n'est plus refusé : il devient une décision.
-   ===================================================================== */
-const _trainLenN56=trainLen;trainLen=function(tr,units){return _trainLenN56(tr,units)+(tr.renfOther||[]).reduce((a,x)=>a+(ULEN[x.mat]||80),0);};
-function lenPlanOf(tr){return tr.lenPlan||(tr.lenPlan={});}
-function lenOpenPb(tr,units,from,to){try{return lenProblems(tr,units==null?tr.units:units,from,to).filter(p=>!lenPlanOf(tr)[p.st]);}catch(e){return [];}}
-function lenAccessible(st,tr){const M=MAT[tr.mat];const pl=ST[st].plLen||420;return Math.max(1,Math.floor((pl-(M.lolen||0))/M.ulen));}
-function lenPaxAt(tr,st){const i=tr.route.indexOf(st);if(i<0)return 0;try{return Math.max(5,Math.round(demand(tr,i)*(ST[st].halt?.1:.2)));}catch(e){return 20;}}
-// renfort : la longueur n'est plus bloquante si un plan de quais existe (ou en cours de décision)
-const _renfCheckN56=renfCheck;renfCheck=function(tr,st,n=1){const c=_renfCheckN56(tr,st,n);if(c.ok||!c.lenPb)return c;
-  const open=c.lenPb.filter(p=>!lenPlanOf(tr)[p.st]);if(!open.length||G._lenBypass){c.ok=true;c.why="";c.lenNote=`${c.lenPb.length} quai(s) court(s) : plan décidé`;}else c.lenOpen=open;return c;};
-/* ---------- dialogue ---------- */
-function lenOpen(trId,o){const tr=TR(trId);if(!tr)return;o=o||{};if(!o.from)o.from=tr.state==="wait"?tr.route[tr.idx]:tr.route[tr.idx+1];const units=o.n!=null?tr.units+o.n:tr.units;const pb=lenProblems(tr,units,o.from||null,o.to||null);if(!pb.length){toast("Aucun quai trop court sur ce parcours","i");return;}
-  UI.ln={tr:trId,mode:o.mode||"plan",from:o.from||null,to:o.to||null,n:o.n||0,units,sel:Object.fromEntries(pb.map(p=>[p.st,lenPlanOf(tr)[p.st]||(ST[p.st].halt&&lenPaxAt(tr,p.st)<25?"sel":"sel")])),ann:true,radio:true};
-  let el=$("#lendlg");if(!el){el=document.createElement("div");el.id="lendlg";el.className="overlay";document.body.appendChild(el);}el.hidden=false;lenRender();}
-function lenClose(){const el=$("#lendlg");if(el)el.hidden=true;UI.ln=null;renderCard();if(typeof rpRender==="function"&&UI.rp)rpRender();}
-function lenRender(){const el=$("#lendlg");const D=UI.ln;if(!el||!D)return;const tr=TR(D.tr);if(!tr){lenClose();return;}const M=MAT[tr.mat];const L=trainLen(tr,D.units);const pb=lenProblems(tr,D.units,D.from,D.to);
-  const chip=(a,l,on)=>btn(a,l,on?"pri":"ghost");let skipPax=0,selN=0;for(const p of pb){if(D.sel[p.st]==="skip")skipPax+=lenPaxAt(tr,p.st);else selN++;}
-  el.innerHTML=`<div class="dlg wide"><div class="row"><div class="grow"><div class="eyebrow">Quais courts</div><h2>${esc(tr.label)} · ${L} m</h2><div class="small muted">${D.units} × ${esc(M.unit)}${D.mode==="renf"?` après renfort de +${D.n} à ${esc(SN(D.from))}`:""} · ${pb.length} arrêt(s) avec un quai plus court que le train</div></div><button class="x" data-a="ln-close" aria-label="Fermer">✕</button></div>
-   <h2 class="sec">1 · Décision halte par halte</h2><div class="list">${pb.map(p=>{const acc=lenAccessible(p.st,{mat:tr.mat});const pax=lenPaxAt(tr,p.st);return `<div class="li" style="cursor:default;flex-wrap:wrap;gap:6px"><div class="grow"><b>${esc(SN(p.st))}</b> <span class="small muted">quai ${p.pl} m · ≈ ${pax} voyageurs attendus${ST[p.st].halt?" · halte":""}</span></div>
-     <div class="seg">${chip(`ln-sel:${p.st}:sel`,`Portes sélectives (${acc} ${acc>1?"premières unités":"première unité"})`,D.sel[p.st]==="sel")}${chip(`ln-sel:${p.st}:skip`,"Sauter l'arrêt",D.sel[p.st]==="skip")}</div></div>`;}).join("")}</div>
-   <h2 class="sec">2 · Conséquences</h2><ul class="brief"><li>Portes sélectives : <b>+1 min</b> par arrêt (${selN} arrêt(s)), voyageurs guidés vers les voitures accessibles ; sans annonce, mécontentement.</li>
-    <li>Arrêts sautés : <b>≈ ${skipPax} voyageurs</b> reportés sur le train suivant, annonce de non-arrêt, satisfaction −.</li>
-    ${D.mode==="renf"&&M.renf==="unit"?`<li>Alternative : dételer la rame de renfort avant le premier quai court (planificateur, « Dételer à »).</li>`:""}</ul>
-   <h2 class="sec">3 · Information</h2><div class="list">
-    <label class="li" style="gap:8px"><input type="checkbox" data-lnopt="ann"${D.ann?" checked":""}><span class="grow"><b>Annonce dans les gares concernées</b> (« montez dans les N premières voitures » / « ce train ne s'arrête pas »)</span></label>
-    <label class="li" style="gap:8px"><input type="checkbox" data-lnopt="radio"${D.radio?" checked":""}><span class="grow"><b>Ordre radio au mécanicien</b> + information à bord</span></label></div>
-   <div class="acts" style="margin-top:8px">${btn("ln-apply",D.mode==="renf"?"Valider et commander le renfort":"Valider le plan","pri")}${btn("ln-close","Annuler","ghost")}</div></div>`;
-  el.querySelectorAll("[data-lnopt]").forEach(x=>x.onchange=()=>{D[x.dataset.lnopt]=x.checked;});}
-function lenAnnounce(tr,st,mode){const dest=tr.route.at(-1);const acc=lenAccessible(st,{mat:tr.mat});const T=tr.label;
-  const f=mode==="skip"?{fr:`Le ${T} pour ${SN(dest)} ne s'arrête pas à ${SN(st)} (composition trop longue pour le quai). Veuillez emprunter le train suivant.`,de:`Der ${T} nach ${SN(dest,"de")} hält nicht in ${SN(st,"de")} (Zug zu lang für den Perron). Bitte benützen Sie den nächsten Zug.`,it:`Il ${T} per ${SN(dest,"it")} non ferma a ${SN(st,"it")} (composizione troppo lunga per il marciapiede). Si prega di prendere il treno successivo.`}
-    :{fr:`Le ${T} pour ${SN(dest)} est plus long que le quai : seules les ${acc} ${acc>1?"premières voitures ouvrent leurs portes":"première voiture ouvre ses portes"}. Merci d'avancer en tête de quai.`,de:`Der ${T} nach ${SN(dest,"de")} ist länger als der Perron: nur die ${acc>1?"vorderen "+acc+" Wagen öffnen":"vorderste Einheit öffnet"} die Türen. Bitte begeben Sie sich an den Perronanfang.`,it:`Il ${T} per ${SN(dest,"it")} è più lungo del marciapiede: solo ${acc>1?"le prime "+acc+" carrozze aprono":"la prima carrozza apre"} le porte. Avanzate in testa al marciapiede.`};
-  publishAnn("free",{free:f},[st],G.t+2*3600);}
-function lenApply(){const D=UI.ln;if(!D)return;const tr=TR(D.tr);if(!tr)return lenClose();const P=lenPlanOf(tr);const done=[];let nSel=0,nSkip=0;
-  for(const st in D.sel){P[st]=D.sel[st];if(D.sel[st]==="skip"){tr.skip.add(st);nSkip++;}else{tr.skip.delete(st);nSel++;}if(D.ann)lenAnnounce(tr,st,D.sel[st]);}
-  if(D.radio){radioOut(tr,`Ordre du CGT : composition de ${trainLen(tr,D.units)} m. ${Object.entries(D.sel).map(([st,m])=>m==="skip"?`Pas d'arrêt à ${SN(st)}`:`${SN(st)} : ouverture sélective, ${lenAccessible(st,{mat:tr.mat})} unité(s) en tête`).join(" ; ")}. Informez les voyageurs.`);tr.infoGiven=G.t;}
-  if(nSel)done.push(`${nSel} arrêt(s) portes sélectives`);if(nSkip)done.push(`${nSkip} arrêt(s) sauté(s)`);if(D.ann)done.push("annonce");
-  let msg=null;if(D.mode==="renf"){G._lenBypass=true;try{msg=typeof orderRenfortSeg==="function"?orderRenfortSeg(tr,D.from,D.n,D.to):orderRenfort(tr,D.from,D.n);}finally{G._lenBypass=false;}
-    if(msg){toast(msg,"w");}else done.unshift(`renfort +${D.n} à ${SN(D.from)}`);}
-  log(`${tr.label} : plan quais courts — ${done.join(", ")}`,"info");if(typeof decLogPush==="function")decLogPush("Quais courts",tr.label,done.join(", "));if(typeof sound==="function")sound("ok");
-  G.dismiss.add("len:"+tr.id);lenClose();}
-/* ---------- arrivée : application du plan ---------- */
-const _arriveN56=arrive;arrive=function(tr){const st=tr&&tr.state==="run"?tr.route[tr.idx+1]:null;const P=tr&&tr.lenPlan;const sel=st&&P&&P[st]==="sel"&&tr.stops.has(st)&&!tr.skip.has(st);let keep=null;
-  if(sel){keep=ST[st].plLen;ST[st].plLen=9999;}
-  let r;try{r=_arriveN56(tr);}finally{if(sel)ST[st].plLen=keep;}
-  if(sel&&tr.state==="wait"&&tr.route[tr.idx]===st&&!G.warm){tr.busyUntil=Math.max(tr.busyUntil||0,G.t+60);tr.busyWhy="Ouverture sélective des portes (quai court)";const acc=lenAccessible(st,{mat:tr.mat});
-    log(`${tr.label} à ${SN(st)} : ouverture sélective, ${acc} unité(s) en tête · +1 min`,"info");const annOk=G.anns.some(a=>a.active&&a.type==="free"&&a.st.includes(st)&&a.f.free&&a.f.free.fr.includes(tr.label));if(!annOk)G.sat=Math.max(0,(G.sat||0)-.5);}
-  return r;};
-// arrêt sauté : voyageurs reportés (comptés au passage)
-const _stepRunN56=stepRun;stepRun=function(tr,dt){const before=tr.idx;_stepRunN56(tr,dt);if(G.warm||tr.idx===before)return;const st=tr.route[tr.idx];const P=tr.lenPlan;if(!P||P[st]!=="skip"||P["_c"+st])return;P["_c"+st]=1;const n=lenPaxAt(tr,st);G.k.left+=n;G.sat=Math.max(0,(G.sat||0)-1);log(`${tr.label} passe sans arrêt à ${SN(st)} (train trop long) : ≈ ${n} voyageurs reportés sur le train suivant`,"warn");};
-/* ---------- proposition quand un train devient trop long ---------- */
-const _genPropsN56=genProps;genProps=function(){_genPropsN56();if(G.warm||G.mode==="auto")return;
-  for(const tr of G.trains){if(tr.state==="done"||tr.cat==="G"||!MAT[tr.mat].seats||!inRegTr(tr))continue;const key="len:"+tr.id;if(G.dismiss.has(key))continue;
-    const from=tr.state==="wait"?tr.route[tr.idx]:tr.route[tr.idx+1];const pb=lenOpenPb(tr,null,from,null);if(!pb.length)continue;
-    G.props.unshift({key,sev:"warn",kind:"Quais courts",title:`${tr.label} (${trainLen(tr)} m) trop long pour ${pb.length} quai(s)`,text:`${pb.map(p=>`${SN(p.st)} (${p.pl} m)`).join(", ")}. Sans décision, le mécanicien ouvre seulement les portes à quai : +1,5 min par arrêt et voyageurs mécontents.`,
-      opts:[{label:"Portes sélectives partout + annonce",sub:"Montez dans les premières voitures · +1 min par arrêt",fn:()=>{const P=lenPlanOf(tr);for(const p of pb){P[p.st]="sel";lenAnnounce(tr,p.st,"sel");}radioOut(tr,`Ordre du CGT : ouverture sélective des portes à ${pb.map(p=>SN(p.st)).join(", ")}. Informez les voyageurs.`);if(typeof decLogPush==="function")decLogPush("Quais courts",tr.label,"Portes sélectives + annonce");}},
-            {label:"Sauter ces arrêts + annonce",sub:`≈ ${pb.reduce((a,p)=>a+lenPaxAt(tr,p.st),0)} voyageurs reportés`,fn:()=>{const P=lenPlanOf(tr);for(const p of pb){P[p.st]="skip";tr.skip.add(p.st);lenAnnounce(tr,p.st,"skip");}radioOut(tr,`Ordre du CGT : pas d'arrêt à ${pb.map(p=>SN(p.st)).join(", ")} (quais trop courts).`);if(typeof decLogPush==="function")decLogPush("Quais courts",tr.label,"Arrêts sautés + annonce");}},
-            {label:"Décider halte par halte…",sub:"Choix par arrêt, annonces, ordre radio",fn:()=>{G.dismiss.delete(key);lenOpen(tr.id,{mode:"plan",from});}}],auto:0});}};
-/* ---------- planificateur de renfort : bouton quand seule la longueur bloque ---------- */
-const _rpRenderN56=rpRender;rpRender=function(){_rpRenderN56();const o=$("#rplan");const R=UI.rp;if(!o||!R||o.hidden||!R.lenFrom)return;const tr=TR(R.tr);if(!tr)return;
-  const prev=tr.renfTo;tr.renfTo=R.lenTo;let c;try{c=renfCheck(tr,R.lenFrom,R.lenN||1);}finally{tr.renfTo=prev;}
-  const lp=o.querySelector(".lenplan .acts");if(!lp)return;
-  if(c&&!c.ok&&c.lenOpen&&c.lenOpen.length)lp.insertAdjacentHTML("beforeend",btn(`ln-open:${tr.id}:${R.lenFrom}:${R.lenTo||""}:${R.lenN||1}`,`Décider pour les ${c.lenOpen.length} quai(s) court(s)…`,"pri"));
-  else if(c&&c.ok&&c.lenNote){const n=o.querySelector(".lenplan .note.warn");if(n)n.outerHTML=`<div class="small ok">${esc(c.lenNote)} : le renfort est possible.</div>`;}};
-/* ---------- fiche train : décisions prises ---------- */
-const _cardTrainN56=cardTrain;cardTrain=function(tr){let h=_cardTrainN56(tr);if(!tr||tr.state==="done"||!tr.lenPlan)return h;const E=Object.entries(tr.lenPlan).filter(([k])=>!k.startsWith("_"));if(!E.length)return h;
-  const txt=E.map(([st,m])=>`${esc(SN(st))} : ${m==="skip"?"arrêt sauté":"portes sélectives"}`).join(" · ");
-  return h.replace(/(<div class="pls">)/,`<div class="small" style="margin:4px 0"><b>Quais courts :</b> ${txt} ${btn("ln-open:"+tr.id,"Modifier…","ghost")}</div>$1`);};
-const _actExtN56=actExt;actExt=function(k,rest,id){switch(k){
-  case "ln-open":{const tr=TR(id);if(!tr)return true;if(rest[1]){lenOpen(id,{mode:"renf",from:rest[1],to:rest[2]||null,n:+(rest[3]||1)});}else{for(const s in (tr.lenPlan||{}))if(!s.startsWith("_"))delete tr.lenPlan[s];lenOpen(id,{mode:"plan"});}return true;}
-  case "ln-close":lenClose();return true;case "ln-apply":lenApply();return true;
-  case "ln-sel":if(UI.ln){UI.ln.sel[id]=rest[1];lenRender();}return true;}
-  return _actExtN56(k,rest,id);};
-if(typeof UNDO_ACTS!=="undefined")UNDO_ACTS["ln-apply"]="Quais courts";
-const _serializeN56=serialize;serialize=function(){const S=_serializeN56();S.n56=G.trains.filter(t=>t.lenPlan).map(t=>[t.id,t.lenPlan]);return S;};
-const _applySaveN56=applySave;applySave=function(S){_applySaveN56(S);for(const [id,P] of (S.n56||[])){const t=TR(id);if(t)t.lenPlan=P;}};
 /* =====================================================================
    ROTATIONS DE MATÉRIEL ET COURSES À VIDE. Chaque train est enchaîné au
    train retour de sa ligne (rotation). Quand un train est supprimé ou
@@ -9251,6 +9171,114 @@ const _resetWorldN59=resetWorld;resetWorld=function(){_resetWorldN59();G.degr=nu
 const _serializeN59=serialize;serialize=function(){const S=_serializeN59();S.n59=G.degr;return S;};
 const _applySaveN59=applySave;applySave=function(S){_applySaveN59(S);G.degr=S.n59||null;};
 if(typeof REPORT_EXTRA!=="undefined")REPORT_EXTRA.push(()=>{const n=G.inc.filter(i=>i.type==="poste").length;return n?["Poste de commande",`${n} panne(s) du système de commande gérée(s)`]:null;});
+/* Longueur des quais : règle supprimée (trop de notifications pour peu d'effet).
+   Plus de contrôle de longueur au renfort, plus de pénalité à l'arrivée, plus de propositions « quais courts ». */
+lenProblems=function(){return [];};
+(function(){const st=document.createElement("style");st.textContent=".pls{display:none!important}";document.head.appendChild(st);})();
+const _cardStN60=cardSt;cardSt=function(c){return _cardStN60(c).replace(/<div class="small muted" style="margin:4px 0">Longueur utile des quais :[^<]*<b>[^<]*<\/b><\/div>/,"");};
+/* =====================================================================
+   VERSION AUTONOME (hébergée hors de claude.ai, par ex. GitHub Pages) :
+   pas de compte ni de base partagée, donc le joueur local est d'office
+   « Directeur du trafic ferroviaire » (pouvoirs complets, carrière
+   directeur, multi-centres). Sur claude.ai, rien ne change : le rang
+   vient du compte.
+   ===================================================================== */
+const STANDALONE=!(window.claude&&claude.use);
+if(STANDALONE){ACC.rank="directeur";ACC.local=true;ACC.owner=false;ACC.loaded=true;
+  const _accCardN61=accCardHTML;accCardHTML=function(){return `<section class="st-card"><h2>Mon compte</h2><p class="muted">Mode local · rang : <b>${accRankLabel("directeur")}</b></p><p class="small muted">Tu joues sur ton propre site : tu as les pleins pouvoirs de Directeur du trafic (tous les secteurs, délégation, recrutement). Ta progression est enregistrée dans ce navigateur.</p></section>`;};
+  const _accInitN61=accInit;accInit=async function(){ACC.rank="directeur";};
+  const _accRankOfN61=accRankOf;accRankOf=function(id,level){return "directeur";};
+}
+/* =====================================================================
+   BONUS « BONNES ACTIONS » : le score n'est plus seulement la photographie
+   de la ponctualité : chaque bonne action le fait monter tout de suite.
+   Calculé à partir de l'état de la partie (pas de compteur à sauvegarder),
+   plafonné à +10 points, score total plafonné à 100.
+     · incident clos vite (< 30 min : +1 ; < 60 min : +.6 ; sinon +.3),
+       critique : ×1,5
+     · correspondance assurée : +0,15 chacune
+     · décision dont l'effet mesuré est positif : +0,8 (jusqu'à +2 selon l'effet)
+     · rotation de matériel réparée, course à vide : +0,4
+     · information publiée à la main (annonce, info-trafic) : +0,25 (max 3)
+     · alarme / panne du poste traitée sans escalade : +1
+   ===================================================================== */
+const BONUS_CAP=10;
+function bonusItems(){const items=[];const t0=G.t0||0;const k=G.k;
+  let inc=0;for(const i of G.inc){if(i.type==="meca"||i.t0<t0||i.status!=="closed"||!i.t1)continue;const d=(i.t1-i.t0)/60;let b=d<30?1:d<60?.6:.3;if(i.sev==="crit")b*=1.5;if(i.type==="alarme"||i.type==="poste")b+=0;inc+=b;}
+  if(inc)items.push(["Incidents clos vite",Math.min(4,inc)]);
+  if(k.connOk)items.push(["Correspondances assurées",Math.min(4,k.connOk*.15)]);
+  let dec=0;for(const d of (G.decScores||[])){if(d.done&&d.delta>0)dec+=Math.min(2,.8+d.delta*.2);}
+  dec+=Math.max(0,(k.decGood||0)-(G.decScores||[]).filter(d=>d.done&&d.delta>=0).length)*.3;
+  if(dec)items.push(["Décisions efficaces",Math.min(4,dec)]);
+  const rot=G.plan.filter(q=>q.rotFix&&!q.cx).length;if(rot)items.push(["Rotations réparées",Math.min(2,rot*.4)]);
+  const man=G.anns.filter(a=>a.auto===false).length+(G.infoT&&G.infoT.pubs?G.infoT.pubs:0);if(man)items.push(["Informations aux voyageurs",Math.min(3,man*.25)]);
+  return items;}
+function bonusTotal(){let s=0;for(const [,v] of bonusItems())s+=v;return Math.min(BONUS_CAP,Math.round(s*10)/10);}
+const _computeReportN62=computeReport;computeReport=function(){const r=_computeReportN62();try{const b=bonusTotal();r.base=r.score;r.bonus=b;r.bonusItems=bonusItems();r.score=Math.min(100,Math.round(r.score+b));const s=r.score;r.grade=s>=90?"Excellent":s>=80?"Très bien":s>=70?"Bien":s>=60?"Suffisant":"Insuffisant";}catch(e){}return r;};
+// rapport : détail du bonus
+if(typeof REPORT_EXTRA!=="undefined")REPORT_EXTRA.push(()=>{const b=bonusTotal();if(!b)return null;return["Bonus bonnes actions",`+${b} pt${b>=2?"s":""} (${bonusItems().map(([n,v])=>n.toLowerCase()+" "+(Math.round(v*10)/10)).join(", ")})`];});
+// retour immédiat : une bonne décision mesurée s'affiche en vert
+let _goodSeen=0;const _tickN62=tick;tick=function(dt){_tickN62(dt);if(G.warm||!G.started||G.client)return;for(const d of (G.decScores||[])){if(d.done&&d.delta>0&&!d.said){d.said=true;log(`Bonne décision (« ${d.label} ») : le score a progressé de ${Math.round(d.delta*10)/10} point(s)`,"ok");if(typeof toast==="function")toast(`✔ Bonne décision : ${d.label} · +${Math.round(d.delta*10)/10}`);}}};
+// KPI : infobulle avec le détail
+const _renderHeaderN62=renderHeader;renderHeader=function(){_renderHeaderN62();if(G.client||!G.started)return;const e=document.querySelector(".kpi.score");if(!e)return;try{const r=computeReport();e.title=`Score en direct : ${r.score}/100 (base ${r.base} + bonus bonnes actions ${r.bonus}). Ponctualité, correspondances, voyageurs laissés, suppressions, incidents, plus des points pour chaque bonne action.`;}catch(x){}};
+/* =====================================================================
+   RETARDS IMPORTÉS DE L'ÉTRANGER : un train international (TGV, ICE, EC,
+   trains de nuit) est annoncé en retard 25 à 50 min avant son départ de la
+   frontière. Le retard ANNONCÉ est une estimation : il peut se creuser ou
+   se résorber (±) avant l'arrivée. Tu décides tôt (mauvais pari possible) ou
+   tard (plus fiable) : le laisser, priorité, rame suisse à l'heure, écourter
+   le changement de personnel, demander au gestionnaire étranger de
+   rattraper, ou supprimer le tronçon suisse.
+   ===================================================================== */
+PKEYS.push("impD","impWarned","impRolled");
+function impRoll(p){const r=Math.random();return Math.round(r<.45?rnd(0,3):r<.75?rnd(4,14):r<.95?rnd(15,48):rnd(49,95));}
+function impFmt(m){return m>=60?`${Math.floor(m/60)} h ${String(m%60).padStart(2,"0")}`:`${m} min`;}
+const _tickN63=tick;tick=function(dt){_tickN63(dt);if(G.warm||!G.started||G.client||(G.diff||0)===0)return;
+  // 1) annonce anticipée (estimation)
+  for(let i=G.pi;i<G.plan.length;i++){const p=G.plan[i];if(p.t-G.t>50*60)break;if(p.cx||p.tr||p.impRolled||!p.L||!p.L.intl)continue;const from=p.L.from&&p.L.from[p.d];if(!from)continue;if(p.t-G.t>40*60&&Math.random()<.5)continue;
+    p.impRolled=true;const o=p.L.tpl[p.d].r[0];if(!inRegSt(o))continue;const m=impRoll(p);p.impD=m;
+    if(m>=12){const est=Math.max(5,Math.round(m*(1+rnd(-25,25)/100)));p.impWarned=true;p.impEst=est;
+      const ABR=typeof ABROAD!=="undefined"?(ABROAD[from]||"de l'étranger"):"de l'étranger";
+      const inc=openInc("intl",{pe:p.id,station:o,min:est,est:true,note:`${peLabel(p)} de ${from} annoncé avec ≈ ${impFmt(est)} de retard à ${SN(o)} (estimation du gestionnaire ${ABR.replace("d'","").replace("de ","")}, à confirmer)`});
+      p.impInc=inc.id;}}
+  // 2) le train est créé : rattacher l'incident et fixer le retard réel
+  for(const inc of G.inc){if(inc.type!=="intl"||inc.status==="closed"||inc.train||!inc.est)continue;const p=PE(inc.pe);if(p&&p.tr){inc.train=p.tr.id;const tr=p.tr;tr.busyUntil=Math.max(0,tr.dep[0]+(p.impD||0)*60);tr.busyWhy=`Retard en provenance de l'étranger (${impFmt(p.impD||0)})`;tr.foreign=true;tr._impBusy=tr.busyUntil;}}
+  // 3) évolution du retard à l'approche (se creuse ou se résorbe)
+  for(const inc of G.inc){if(inc.type!=="intl"||inc.status==="closed"||!inc.est||inc.evolved)continue;const p=PE(inc.pe);const tr=inc.train?TR(inc.train):null;if(!p||!tr||tr.state!=="wait"||tr.idx!==0)continue;if(tr.dep[0]-G.t>14*60)continue;
+    inc.evolved=true;const m=p.impD||0;const m2=Math.max(0,Math.round(m+rnd(-30,35)/100*m));if(Math.abs(m2-m)<4)continue;
+    p.impD=m2;if(tr.busyUntil===tr._impBusy){tr._impBusy=tr.dep[0]+m2*60;tr.busyUntil=tr._impBusy;tr.busyWhy=`Retard en provenance de l'étranger (${impFmt(m2)})`;}
+    inc.min=m2;inc.note=`${tr.label} : le retard annoncé est ${m2>m?"passé":"revenu"} de ${impFmt(m)} à ${impFmt(m2)} à ${SN(tr.route[0])}`;
+    log(inc.note,m2>m?"warn":"ok");if(typeof toast==="function")toast(inc.note,m2>m?"w":"i");}};
+/* ---------- actions supplémentaires ---------- */
+const _incActionsN63=incActions;incActions=function(inc){const A=_incActionsN63(inc);if(!inc||inc.type!=="intl"||inc.status==="closed")return A;const tr=TR(inc.train);const p=PE(inc.pe);if(!p)return A;
+  const o=p.L.tpl[p.d].r[0];const m=p.impD!=null?p.impD:(inc.min||0);const st0=!tr||(tr.state==="wait"&&tr.idx===0);
+  if(!tr&&!A.some(a=>a.k==="keep"))A.unshift({k:"keep",label:"Le laisser circuler avec son retard",sub:"Correspondances et sillons perturbés en aval",rec:m<25,fn:()=>{closeInc(inc,"Circule avec son retard");}});
+  if(st0&&!inc.acts.fast&&m>=6)A.push({k:"fast",label:"Écourter le changement de personnel et les contrôles",sub:`≈ −${Math.min(6,Math.round(m/3))} min · risque d'oubli (15 %)`,fn:()=>{inc.acts.fast=G.t;const gain=Math.min(6,Math.max(2,Math.round(m/3)));if(Math.random()<.15){log(`${p.L.id}: changement de personnel précipité, défaut de remise en service : +4 min`,"warn");if(tr)tr.busyUntil+=4*60;p.impD=m+4;}else{p.impD=Math.max(0,m-gain);if(tr){tr.busyUntil=Math.max(G.t,tr.busyUntil-gain*60);tr._impBusy=tr.busyUntil;}log(`${peLabel(p)} : changement de personnel écourté, ${gain} min gagnées`,"ok");}inc.min=p.impD;}});
+  if(st0&&!inc.acts.push&&m>=10)A.push({k:"push",label:"Demander au gestionnaire étranger de rattraper",sub:"Appel au centre d'exploitation · réussite incertaine, dépend de la confiance",fn:()=>{inc.acts.push=G.t;const pr=clamp(.35+(G.trust-50)/100,.1,.8);if(Math.random()<pr){const g=Math.min(m-2,ri(4,12));p.impD=Math.max(0,m-g);if(tr){tr.busyUntil=Math.max(G.t,tr.busyUntil-g*60);tr._impBusy=tr.busyUntil;}inc.min=p.impD;if(typeof trust==="function")trust(1);log(`${peLabel(p)} : le gestionnaire étranger rattrape ${g} min (retard ≈ ${impFmt(p.impD)})`,"ok");}else{if(typeof trust==="function")trust(-1);log(`${peLabel(p)} : le gestionnaire étranger ne peut pas rattraper davantage`,"warn");}}});
+  if(m>=45&&st0&&!inc.acts.cut)A.push({k:"cut",label:"Supprimer le tronçon suisse",sub:"Retard trop important : les voyageurs prennent le train suivant, annonce en gare",cls:"red",fn:()=>{inc.acts.cut=G.t;if(tr)cancelTrain(tr,"Retard de l'étranger");else cancelPlan(p,"Retard de l'étranger");try{publishAnn("cancel",{dest:p.L.tpl[p.d].r.at(-1),label:peLabel(p)},[o],G.t+2*3600,inc.id,true);}catch(e){}closeInc(inc,"Tronçon suisse supprimé");}});
+  return A;};
+const _decStrategiesN63=decStrategies;decStrategies=function(inc){const S=_decStrategiesN63(inc);if(!inc||inc.type!=="intl")return S;const K=decKeys(inc);
+  if(K.has("fast"))S.push({t:"Écourter le changement de personnel",keys:["fast","ann"],pros:["Quelques minutes gagnées à la frontière"],cons:["Risque d'oubli de contrôle (15 %)"],rec:false});
+  if(K.has("push"))S.push({t:"Demander au gestionnaire étranger de rattraper",keys:["push","ann"],pros:["Peut réduire le retard avant la frontière"],cons:["Réussite incertaine, dépend de la confiance"],rec:false});
+  if(K.has("cut"))S.push({t:"Supprimer le tronçon suisse",keys:["cut","ann"],pros:["Aucun retard importé sur le réseau"],cons:["Voyageurs reportés sur le train suivant"],rec:false});
+  return S;};
+// la note de l'incident reflète l'évolution
+const _incWhereN63=incWhere;incWhere=function(inc){if(inc.type==="intl"&&!inc.train){const p=PE(inc.pe);return p?`${peLabel(p)} à ${SN(p.L.tpl[p.d].r[0])}`:"—";}return _incWhereN63(inc);};
+/* =====================================================================
+   CARRIÈRE DU DIRECTEUR : le mode Directeur est une vraie carrière sur
+   plusieurs jours (comme les autres niveaux) : jour N, rames fragiles
+   d'hier, budget d'investissement, résultat cumulé. La carte Carrière
+   affiche le suivi : services effectués, meilleur score, résultat cumulé,
+   budget et derniers services.
+   ===================================================================== */
+if(typeof daySave==="function"){const _daySaveN64=daySave;daySave=function(R){_daySaveN64(R);try{if(G.career&&G.career.lv==="dir"){const D=dirCar();const h=D.hist&&D.hist[0];if(h&&!h.day){const r=typeof resultDay==="function"?resultDay():{net:0};h.net=Math.round(r.net);h.day=carDay().n;h.pct=Math.round(R.punct*10)/10;carSave();}}}catch(e){}};}
+const _careerCardN64=careerCard;careerCard=function(){let h=_careerCardN64();if(!isDirector())return h;const D=dirCar();const C=CAR.day||{n:0,net:0};if(!D.services&&!C.n)return h.replace("Terrain d'entraînement :","Carrière de Directeur : ");
+  const f=v=>(v>=0?"+":"−")+Math.round(Math.abs(v)).toLocaleString("fr-CH");const H=(D.hist||[]).slice(0,5);
+  const blk=`<div class="box tint" style="margin:8px 0"><div class="row"><b class="grow">Ta carrière de Directeur</b><span class="pill info">jour ${(C.n||0)+1}</span></div>
+   <dl class="kv"><dt>Services effectués</dt><dd>${D.services||0}</dd><dt>Meilleur score</dt><dd>${D.best||0}/100</dd><dt>Résultat cumulé</dt><dd style="color:var(--${(C.net||0)>=0?"ok":"crit"})">${f(C.net||0)} CHF</dd><dt>Budget d'investissement</dt><dd>${Math.round((CAR.inv&&CAR.inv.budget)||0).toLocaleString("fr-CH")} CHF</dd>${C.shop&&C.shop.length?`<dt>Rames à l'atelier</dt><dd>${C.shop.length}</dd>`:""}${C.fleet&&Object.keys(C.fleet).length?`<dt>Rames fragiles</dt><dd>${Object.keys(C.fleet).length}</dd>`:""}</dl>
+   ${H.length?`<div class="small muted" style="margin-top:4px">${H.map(x=>`${x.day?"J"+x.day+" · ":""}${x.score}/100${x.pct?" · "+x.pct+" %":""}${x.net!=null?" · "+f(x.net)+" CHF":""}${x.passed?" ✓":" ✗"}`).join("<br>")}</div>`:""}
+   <div class="small muted" style="margin-top:4px">Chaque service se prolonge sur le suivant : les rames abîmées restent fragiles, le budget s'accumule et se dépense en investissements.</div></div>`;
+  return h.replace(/(<ol class="ladder">)/,blk+"$1").replace("Terrain d'entraînement :","Carrière de Directeur : ");};
 
 /* =====================================================================
    CONTRÔLES STATIQUES, ÉVÉNEMENTS, BOUCLE, DÉMARRAGE
