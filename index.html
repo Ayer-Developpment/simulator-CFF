@@ -8710,7 +8710,7 @@ if(typeof daySave==="function"){const _daySaveN52=daySave;daySave=function(R){_d
    avec un délai et une fiabilité selon leur niveau. Salaire horaire.
    ===================================================================== */
 G.staff=[];
-const STAFF_LVL={assistant:{n:"Assistant·e",chf:55,delay:4*60,err:.15},regulateur:{n:"Régulateur·rice",chf:75,delay:2*60,err:.05},chef:{n:"Chef·fe de salle",chf:95,delay:60,err:0}};
+const STAFF_LVL={assistant:{n:"Assistant·e",chf:55,delay:20,err:.15},regulateur:{n:"Régulateur·rice",chf:75,delay:5,err:.05},chef:{n:"Chef·fe de salle",chf:95,delay:0,err:0}};
 const STAFF_DOM={conn:"Correspondances",inc:"Incidents (stratégie conseillée)",bus:"Bus de remplacement",info:"Information voyageurs",quai:"Voies et quais",drv:"Personnel roulant",fret:"Fret",all:"Tout le centre (chef)"};
 const STAFF_ALLD=["conn","inc","bus","info","quai","drv","fret"];const STAFF_MAXD={assistant:2,regulateur:4,chef:7};
 function staffDoms(s){return s.doms&&s.doms.length?s.doms:(s.dom==="all"?STAFF_ALLD:[s.dom]);}
@@ -8719,14 +8719,14 @@ function staffName(){return pick(FIRST)+" "+pick(LAST);}
 function staffCan(){return typeof dirCan==="function"?dirCan():(typeof ACC!=="undefined"&&(ACC.rank==="directeur"||ACC.rank==="adjoint"));}
 function staffHire(reg,dom,lvl){if(!staffCan()){toast("Réservé à la direction","w");return null;}let doms=Array.isArray(dom)?dom.slice():[dom];if(doms.includes("all"))doms=STAFF_ALLD.slice();doms=[...new Set(doms)].filter(k=>STAFF_DOM[k]&&k!=="all");
   if(!REGIONS[reg]||!doms.length||!STAFF_LVL[lvl])return null;if(doms.length>(STAFF_MAXD[lvl]||1)){toast(`${STAFF_LVL[lvl].n} : ${STAFF_MAXD[lvl]} tâche(s) au maximum`+(lvl!=="chef"?" — un·e chef·fe de salle peut tout gérer":""),"w");return null;}dom=doms.length>=7?"all":doms[0];
-  const s={id:"ST"+(G.staff.length+1)+"-"+Date.now().toString(36).slice(-3),name:staffName(),reg,dom,doms,lvl,t0:G.t,acts:0,policy:{maxWait:5,minPax:15,incDelay:2}};G.staff.push(s);
+  const s={id:"ST"+(G.staff.length+1)+"-"+Date.now().toString(36).slice(-3),name:staffName(),reg,dom,doms,lvl,t0:G.t,acts:0,policy:{maxWait:5,minPax:15,incDelay:0}};G.staff.push(s);
   log(`${STAFF_LVL[lvl].n} ${s.name} engagé·e : ${REGIONS[reg].c} · ${staffDomLabel(s)} (${STAFF_LVL[lvl].chf} CHF/h)`,"ok");if(typeof decLogPush==="function")decLogPush("Personnel",REGIONS[reg].c,`Engagement ${s.name} (${staffDomLabel(s)})`);return s;}
 function staffFire(id){const i=G.staff.findIndex(s=>s.id===id);if(i<0)return;const s=G.staff[i];G.staff.splice(i,1);log(`${s.name} quitte le poste (${REGIONS[s.reg].c})`,"info");}
 function staffScopeSt(s,st){if(!st)return false;if(s.reg==="all")return true;return mpRegOf(HOME(st))===s.reg||(REGIONS[s.reg].st||[]).includes(st);}
 function staffIncIn(s,inc){const e=inc.edge?EDGEOF(inc.edge):null;if(e)return staffScopeSt(s,e.a)||staffScopeSt(s,e.b);if(inc.station)return staffScopeSt(s,inc.station);const t=inc.train?TR(inc.train):null;return t?staffScopeSt(s,t.route[Math.min(t.idx,t.route.length-1)]):false;}
 function staffPropIn(s,p){const ids=p.key.split(/[:>@]/);for(const x of ids){if(ST[x]&&staffScopeSt(s,x))return true;if(/^T\d+$/.test(x)){const t=TR(x);if(t&&staffScopeSt(s,t.route[Math.min(t.idx,t.route.length-1)]))return true;}if(/^C\d+$/.test(x)){const c=G.conns.find(y=>y.id===x);if(c&&staffScopeSt(s,c.st))return true;}}return false;}
 function staffDo(s,fn,what){G._staffAct=true;try{fn();}finally{G._staffAct=false;}s.acts++;s.last=G.t;log(`${s.name} (${REGIONS[s.reg].c}) : ${what}`,"info");}
-let _stfT=0;const _tickN53=tick;tick=function(dt){_tickN53(dt);if(G.warm||!G.started||G.client||!G.staff.length)return;if(G.t-_stfT<30)return;const first=!_stfT;_stfT=G.t;
+let _stfT=0;const _tickN53=tick;tick=function(dt){_tickN53(dt);if(G.warm||!G.started||G.client||!G.staff.length)return;if(G.t-_stfT<5)return;const first=!_stfT;_stfT=G.t;
   // salaires (par heure de jeu)
   for(const s of G.staff){if(!s.payAt)s.payAt=G.t+3600;if(G.t>=s.payAt){s.payAt+=3600;if(typeof cost==="function")cost("Personnel",`Salaire ${s.name}`,STAFF_LVL[s.lvl].chf);}}
   for(const s of G.staff){const L=STAFF_LVL[s.lvl];const doms=staffDoms(s);const mistake=()=>Math.random()<L.err;
@@ -8746,7 +8746,7 @@ let _stfT=0;const _tickN53=tick;tick=function(dt){_tickN53(dt);if(G.warm||!G.sta
     if(doms.includes("drv")){for(const inc of G.inc){if(inc.status==="closed"||inc.type!=="meca"||!staffIncIn(s,inc)||G.t-inc.t0<L.delay)continue;const a=incActions(inc).find(x=>x.k.startsWith("d:"));if(a)staffDo(s,()=>doAct(inc.id,a.k),a.label);}}}};
 /* ---------- tableau de bord de direction : personnel ---------- */
 function staffHTML(){const regs=Object.keys(REGIONS).filter(k=>k!=="all"&&REGIONS[k].st);UI.sh=UI.sh||{reg:regs[0],dom:"conn",doms:["conn"],lvl:"regulateur"};if(!UI.sh.doms)UI.sh.doms=[UI.sh.dom||"conn"];const H=UI.sh;
-  const list=G.staff.length?`<div class="list">${G.staff.map(s=>`<div class="li" style="cursor:default"><span class="sev ok"></span><div class="grow"><b>${esc(s.name)}</b> · ${esc(STAFF_LVL[s.lvl].n)}<div class="small muted">${esc(REGIONS[s.reg].c)} · ${esc(staffDomLabel(s))} · ${s.acts} action(s)${s.last?" · dernière à "+fmt(s.last):""} · ${STAFF_LVL[s.lvl].chf} CHF/h</div>${staffDoms(s).includes("conn")?`<div class="small">Consigne correspondances : attendre jusqu'à <select data-stf="${s.id}:maxWait">${[2,3,5,8,12].map(m=>`<option${s.policy.maxWait===m?" selected":""}>${m}</option>`).join("")}</select> min dès <select data-stf="${s.id}:minPax">${[5,15,30,60].map(m=>`<option${s.policy.minPax===m?" selected":""}>${m}</option>`).join("")}</select> voyageurs</div>`:""}${staffDoms(s).includes("inc")?`<div class="small">Incidents : décide après <select data-stf="${s.id}:incDelay">${[1,2,5,10].map(m=>`<option${s.policy.incDelay===m?" selected":""}>${m}</option>`).join("")}</select> min sans décision du poste</div>`:""}<div class="small" style="display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px"><span class="muted">Tâches (max. ${STAFF_MAXD[s.lvl]}) :</span>${STAFF_ALLD.map(k=>`<label style="display:inline-flex;gap:3px;align-items:center"><input type="checkbox" data-sdom="${s.id}:${k}"${staffDoms(s).includes(k)?" checked":""}>${esc(STAFF_DOM[k].replace(/ \(.*\)/,""))}</label>`).join("")}</div></div>${btn("stf-fire:"+s.id,"Libérer","ghost")}</div>`).join("")}</div>`:'<div class="empty">Personne n\'est engagé : tu fais tout toi-même.</div>';
+  const list=G.staff.length?`<div class="list">${G.staff.map(s=>`<div class="li" style="cursor:default"><span class="sev ok"></span><div class="grow"><b>${esc(s.name)}</b> · ${esc(STAFF_LVL[s.lvl].n)}<div class="small muted">${esc(REGIONS[s.reg].c)} · ${esc(staffDomLabel(s))} · ${s.acts} action(s)${s.last?" · dernière à "+fmt(s.last):""} · ${STAFF_LVL[s.lvl].chf} CHF/h</div>${staffDoms(s).includes("conn")?`<div class="small">Consigne correspondances : attendre jusqu'à <select data-stf="${s.id}:maxWait">${[2,3,5,8,12].map(m=>`<option${s.policy.maxWait===m?" selected":""}>${m}</option>`).join("")}</select> min dès <select data-stf="${s.id}:minPax">${[5,15,30,60].map(m=>`<option${s.policy.minPax===m?" selected":""}>${m}</option>`).join("")}</select> voyageurs</div>`:""}${staffDoms(s).includes("inc")?`<div class="small">Incidents : décide après <select data-stf="${s.id}:incDelay">${[0,1,2,5,10].map(m=>`<option${s.policy.incDelay===m?" selected":""}>${m}</option>`).join("")}</select> min sans décision du poste</div>`:""}<div class="small" style="display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px"><span class="muted">Tâches (max. ${STAFF_MAXD[s.lvl]}) :</span>${STAFF_ALLD.map(k=>`<label style="display:inline-flex;gap:3px;align-items:center"><input type="checkbox" data-sdom="${s.id}:${k}"${staffDoms(s).includes(k)?" checked":""}>${esc(STAFF_DOM[k].replace(/ \(.*\)/,""))}</label>`).join("")}</div></div>${btn("stf-fire:"+s.id,"Libérer","ghost")}</div>`).join("")}</div>`:'<div class="empty">Personne n\'est engagé : tu fais tout toi-même.</div>';
   const hire=`<div class="box tint"><b>Engager</b><div class="row" style="flex-wrap:wrap;gap:6px;margin-top:4px"><select id="shReg">${regs.map(k=>`<option value="${k}"${H.reg===k?" selected":""}>${esc(REGIONS[k].c)}</option>`).join("")}</select><select id="shLvl">${Object.entries(STAFF_LVL).map(([k,l])=>`<option value="${k}"${H.lvl===k?" selected":""}>${l.n} · ${l.chf} CHF/h</option>`).join("")}</select>${btn("stf-hire","Engager","pri")}</div><div class="small" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px"><span class="muted">Tâches confiées :</span>${STAFF_ALLD.map(k=>`<label style="display:inline-flex;gap:3px;align-items:center"><input type="checkbox" data-shdom="${k}"${H.doms.includes(k)?" checked":""}>${esc(STAFF_DOM[k])}</label>`).join("")}<button class="btn ghost" data-shall="1" style="padding:1px 8px">Tout cocher</button></div>
    <div class="small muted">Assistant·e : réagit en 4 min, se trompe parfois, 2 tâches max. · Régulateur·rice : 2 min, rarement, 4 tâches max. · Chef·fe de salle : 1 min, fiable, jusqu'à « tout le centre » (7 tâches). Chaque action déléguée est inscrite au journal avec le nom de l'employé·e ; tu gardes la main et peux annuler.</div></div>`;
   return `<h2 class="sec" style="margin-top:10px">Personnel de régulation <span class="pill mut">${G.staff.length}</span></h2>${list}${hire}`;}
@@ -10431,7 +10431,7 @@ function ovr(d){
   if(d.kind==="conn"){const cn=G.conns.find(x=>"conn:"+x.id===d.key);if(!cn)return "";const c=TR(cn.c);const open=c&&c.state!=="done"&&cn.status!=="ok"&&cn.status!=="lost";
     if(!open)return `<span class="small muted">Terminé : ${cn.status==="ok"?"correspondance assurée":cn.status==="lost"?"correspondance manquée":"clos"}</span>`;
     return cn.status==="held"?`<button class="btn ghost" data-sd="unhold:${cn.id}">Annuler l'attente</button>`:`<button class="btn pri" data-sd="hold:${cn.id}">Faire attendre quand même</button>`;}
-  if(d.kind==="quai"){const t=trainOfKey(d.key);return t?`<button class="btn ghost" data-sd="tr:${t.id}">Voir le train</button>`:"";}
+  if(d.kind==="quai"){const t=trainOfKey(d.key);return t?`<button class="btn pri" data-sd="plat:${t.id}">Changer la voie</button><button class="btn ghost" data-sd="tr:${t.id}">Voir le train</button>`:"";}
   if(d.kind==="inc"){const i=INC(d.inc);return i?`<button class="btn ghost" data-sd="inc:${i.id}">Ouvrir l'incident</button>`:"";}
   return "";}
 function html(){const L=G.staffDec.slice(0,15);
@@ -10450,6 +10450,7 @@ ov.addEventListener("click",e=>{const b=e.target.closest("[data-sd]");if(!b){if(
  else if(c==="hold"){const cn=G.conns.find(x=>x.id===id);if(cn){cn.status="pending";connWait(cn,false);log(`Directeur : ${cn.cl} attendra le ${cn.fl} à ${SN(cn.st)} (décision reprise)`,"ok");}}
  else if(c==="unhold"){const cn=G.conns.find(x=>x.id===id);if(cn){const t=TR(cn.c);if(t&&t.connHold&&t.connHold.st===cn.st)t.connHold=null;connDrop(cn);}}
  else if(c==="tr"){ov.hidden=true;try{focusTrain(id);}catch(x){}return;}
+ else if(c==="plat"){ov.hidden=true;try{const t=TR(id);if(t&&t.pe){UI.boardSt=t.route[Math.max(0,t.idx)]||t.route[0];UI.infoTab="board";UI.editRow=t.pe.id;setTab("info");}else focusTrain(id);}catch(x){}return;}
  else if(c==="inc"){ov.hidden=true;try{typeof iwOpen==="function"?iwOpen(id):focusInc(id);}catch(x){}return;}
  ov.innerHTML=html();});
 /* ---- compte à rebours sur les propositions ---- */
@@ -11145,6 +11146,28 @@ const _af=annForInc;annForInc=function(inc){if(inc&&inc.type==="zone"){const S=s
 const _iw=incWhere;incWhere=function(inc){if(inc&&inc.type==="zone"){const S=sects(inc);return S.length?`${S.length} secteurs · ${S.map(s=>s.name).slice(0,2).join(", ")}${S.length>2?"…":""}`:"";}return _iw(inc);};
 INC_MAKERS.push(["zone",1.2,()=>incZone()]);
 if(typeof SIM_INJ!=="undefined")SIM_INJ.zone=()=>incZone();
+})();
+/* n97 : fiabilité des clics — plus de double clic nécessaire (re-rendus qui avalent le clic) */
+(function(){
+const st=document.createElement("style");st.textContent="button,.btn,.li,.mfchip,[data-a],select,label,summary{touch-action:manipulation}";document.head.appendChild(st);
+/* 1) ne pas reconstruire le DOM quand le HTML est identique (le bouton visé reste le même) */
+try{const d=Object.getOwnPropertyDescriptor(Element.prototype,"innerHTML");
+  if(d&&d.set){const last=new WeakMap();
+    Object.defineProperty(Element.prototype,"innerHTML",{configurable:true,enumerable:d.enumerable,get:d.get,set:function(v){
+      if(typeof v==="string"&&v.length>60&&this.isConnected){const l=last.get(this);
+        if(l&&l.h===v&&l.f===this.firstChild&&l.n===this.childNodes.length&&l.fc===(this.firstChild?this.firstChild.parentNode:null))return;}
+      d.set.call(this,v);
+      if(typeof v==="string"&&v.length>60)last.set(this,{h:v,f:this.firstChild,n:this.childNodes.length,fc:this});else last.delete(this);}});}}catch(e){console.warn(e);}
+/* 2) si le bouton pressé a été remplacé avant le relâchement, on rejoue le clic sur son remplaçant */
+let dn=null;
+const key=el=>{if(!el)return"";const a=[];for(const at of el.attributes||[])if(at.name.startsWith("data-")||at.name==="id")a.push(at.name+"="+at.value);return el.tagName+"|"+a.join("|")+"|"+(el.textContent||"").trim().slice(0,40);};
+const hit=el=>el&&el.closest&&el.closest("button,[data-a],.btn,.mfchip,.li,[class*='chip'],a,[data-sd],[data-mf]");
+document.addEventListener("pointerdown",e=>{if(e.button>0)return;const b=hit(e.target);dn=b?{b,k:key(b),x:e.clientX,y:e.clientY,t:Date.now()}:null;},true);
+document.addEventListener("pointerup",e=>{const s=dn;dn=null;if(!s||Date.now()-s.t>1500)return;
+  if(Math.abs(e.clientX-s.x)>12||Math.abs(e.clientY-s.y)>12)return;
+  if(s.b.isConnected)return;
+  setTimeout(()=>{const el=document.elementFromPoint(e.clientX,e.clientY);const b=hit(el);if(!b||b.disabled)return;if(key(b)!==s.k)return;
+    b.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window,clientX:e.clientX,clientY:e.clientY}));},0);},true);
 })();
 
 /* =====================================================================
