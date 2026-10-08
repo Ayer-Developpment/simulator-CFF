@@ -9035,10 +9035,11 @@ const _tickN58=tick;tick=function(dt){_tickN58(dt);if(G.warm||!G.career)return;G
 function invApplyStatic(){for(const e of ED){if(e.tr0==null)e.tr0=e.tr;e.tr=e.tr0;}for(const c in ST){const s=ST[c];if(s.pl0==null)s.pl0=s.pl;s.pl=s.pl0;}
   for(const b of CAR.inv.bought){if(b.k==="dbl"){const e=EDGEOF(b.id);if(e&&e.tr<2)e.tr=2;}else if(b.k==="quai"){const s=ST[b.id];if(s)s.pl=(s.pl||1)+1;}}}
 function invApplyDyn(){let n=0;for(const b of CAR.inv.bought){try{
-  if(b.k==="rame"){const M=MAT[b.mat];G.stock[b.id]=G.stock[b.id]||{};G.stock[b.id][b.mat]=(G.stock[b.id][b.mat]||0)+M.base;n++;}
-  else if(b.k==="meca"){newDriver(b.id,b.op,"reserve",5*3600);n++;}
-  else if(b.k==="equipe"){if(G.teams){G.teams.push({id:"EQX"+G.teams.length,kind:b.kind,name:`Équipe ${TT_KIND[b.kind].toLowerCase()} ${SN(b.id)} (investissement)`,base:b.id,loc:b.id,state:"base",until:0,inc:null,target:null});n++;}}
-  else if(b.k==="bus"){if(G.busPool[b.id]==null)G.busPool[b.id]=ST[b.id].imp>=2?14:ST[b.id].imp>=1?6:0;G.busPool[b.id]+=4;n++;}}catch(e){}}
+  const Q=b.qty||1;
+  if(b.k==="rame"){const M=MAT[b.mat];G.stock[b.id]=G.stock[b.id]||{};G.stock[b.id][b.mat]=(G.stock[b.id][b.mat]||0)+M.base*Q;n+=Q;}
+  else if(b.k==="meca"){for(let q=0;q<Q;q++)newDriver(b.id,b.op,"reserve",5*3600);n+=Q;}
+  else if(b.k==="equipe"){if(G.teams){for(let q=0;q<Q;q++)G.teams.push({id:"EQX"+G.teams.length,kind:b.kind,name:`Équipe ${TT_KIND[b.kind].toLowerCase()} ${SN(b.id)} (investissement)`,base:b.id,loc:b.id,state:"base",until:0,inc:null,target:null});n+=Q;}}
+  else if(b.k==="bus"){if(G.busPool[b.id]==null)G.busPool[b.id]=ST[b.id].imp>=2?14:ST[b.id].imp>=1?6:0;G.busPool[b.id]+=4*Q;n+=Q;}}catch(e){}}
   if(n&&!G.warm)log(`${CAR.inv.bought.length} investissement(s) de ta carrière en service (${n} ressource(s) ajoutée(s))`,"info");}
 const _startGameN58=startGame;startGame=async function(cfg){invApplyStatic();const car=!!G.career||!!(cfg&&cfg.scenario&&String(cfg.scenario).startsWith("car-"));const r=await _startGameN58(cfg);if(car||G.career)invApplyDyn();return r;};
 const _startFromSaveN58=startFromSave;startFromSave=async function(S){invApplyStatic();return _startFromSaveN58(S);};
@@ -9057,7 +9058,7 @@ function invSuggest(){const S=[];const W=CAR.inv.waits||{};const bought=CAR.inv.
   Object.entries(CAR.inv.drvMiss||{}).sort((a,b)=>b[1]-a[1]).slice(0,2).forEach(([key,n])=>{const [st,op]=key.split("|");S.push({k:"meca",id:st,op,why:`${n} train(s) sans mécanicien hier à ${SN(st)} (${OPN[op]||op})`});});
   return S;}
 function invCost(b){const T=INV_T[b.k];if(b.k==="dbl"){const e=EDGEOF(b.id);return e?T.cost(e):0;}if(b.k==="rame")return T.cost(b.mat);return T.cost();}
-function invLabel(b){const T=INV_T[b.k];if(b.k==="dbl"){const e=EDGEOF(b.id);return `${T.n} : ${e?edgeName(e):b.id}`;}if(b.k==="rame")return `${T.n} : ${MAT[b.mat]?MAT[b.mat].n:b.mat} à ${SN(b.id)}`;if(b.k==="meca")return `${T.n} ${OPN[b.op]||b.op} à ${SN(b.id)}`;if(b.k==="equipe")return `${T.n} (${TT_KIND[b.kind]}) à ${SN(b.id)}`;return `${T.n} à ${SN(b.id)}`;}
+function invLabel(b){const T=INV_T[b.k];const X=b.qty>1?" ×"+b.qty:"";if(b.k==="dbl"){const e=EDGEOF(b.id);return `${T.n} : ${e?edgeName(e):b.id}`;}if(b.k==="rame")return `${T.n} : ${MAT[b.mat]?MAT[b.mat].n:b.mat} à ${SN(b.id)}`;if(b.k==="meca")return `${T.n} ${OPN[b.op]||b.op} à ${SN(b.id)}`;if(b.k==="equipe")return `${T.n} (${TT_KIND[b.kind]}) à ${SN(b.id)}`;return `${T.n} à ${SN(b.id)}`;}
 function invBuy(b){const c=invCost(b);if(!c)return "Cible invalide";if(c>CAR.inv.budget)return `Budget insuffisant (${invF(CAR.inv.budget)} disponibles, ${invF(c)} nécessaires)`;
   if(CAR.inv.bought.some(x=>x.k===b.k&&x.id===b.id&&(x.mat||"")===(b.mat||"")&&(x.op||"")===(b.op||"")&&(x.kind||"")===(b.kind||"")&&(b.k==="dbl"||b.k==="quai")))return "Déjà réalisé";
   CAR.inv.budget-=c;CAR.inv.bought.push(Object.assign({cost:c,day:(CAR.day&&CAR.day.n)||0},b));carSave();invApplyStatic();if(typeof sound==="function")sound("ok");return null;}
@@ -9279,6 +9280,77 @@ const _careerCardN64=careerCard;careerCard=function(){let h=_careerCardN64();if(
    ${H.length?`<div class="small muted" style="margin-top:4px">${H.map(x=>`${x.day?"J"+x.day+" · ":""}${x.score}/100${x.pct?" · "+x.pct+" %":""}${x.net!=null?" · "+f(x.net)+" CHF":""}${x.passed?" ✓":" ✗"}`).join("<br>")}</div>`:""}
    <div class="small muted" style="margin-top:4px">Chaque service se prolonge sur le suivant : les rames abîmées restent fragiles, le budget s'accumule et se dépense en investissements.</div></div>`;
   return h.replace(/(<ol class="ladder">)/,blk+"$1").replace("Terrain d'entraînement :","Carrière de Directeur : ");};
+/* =====================================================================
+   COMITÉ DE DIRECTION : en tant que Directeur, tu ne signes pas toi-même
+   les achats. Tu déposes une demande (rames, mécaniciens, équipes, bus,
+   voie, quai) avec un argument et une quantité ; le comité de direction
+   (Finances, Exploitation, Sécurité, Clientèle, Personnel) vote à sa
+   séance, à la fin de chaque service. Majorité de 3 sur 5 : approuvé et
+   financé (budget d'abord, le solde par une dotation du comité) ; 2 voix :
+   reporté (le comité demande de revenir) ; 0 ou 1 voix : refusé.
+   Les décisions du comité dépendent des chiffres : résultat cumulé, coût,
+   goulets réellement subis (demande justifiée par les données), qualité
+   du dernier service.
+   ===================================================================== */
+CAR.inv.req=CAR.inv.req||[];CAR.inv.cmLog=CAR.inv.cmLog||[];
+const _invLabelN65=invLabel;invLabel=function(b){return _invLabelN65(b)+(b.qty>1?" ×"+b.qty:"");};
+const _invCostN65=invCost;invCost=function(b){const c=_invCostN65(b);const q=b.qty!=null?b.qty:(G._invQty||1);return c*(["dbl","quai"].includes(b.k)?1:q);};
+const _invSuggestN65=invSuggest;invSuggest=function(){return _invSuggestN65().map(s=>Object.assign({qty:1},s));};
+const CM_ARGS={ponct:"Ponctualité du réseau",capa:"Capacité et affluence",fiab:"Fiabilité du matériel et du personnel",secu:"Sécurité",rent:"Rentabilité"};
+const CM_ARG_OF={dbl:["ponct","capa"],quai:["capa","ponct"],rame:["capa","fiab"],meca:["fiab","ponct"],equipe:["secu","fiab"],bus:["capa","ponct"]};
+const CM_MEMBERS=[["Finances","Directrice des finances"],["Exploitation","Directeur de l'exploitation"],["Sécurité","Responsable sécurité"],["Clientèle","Directrice clientèle"],["Personnel","Directeur du personnel"]];
+function cmJustified(b){const S=invSuggest();return S.some(s=>s.k===b.k&&s.id===b.id&&(s.mat||"")===(b.mat||"")&&(s.op||"")===(b.op||""));}
+function cmVotes(rq){const b=rq.b;const C=CAR.day||{net:0};const net=C.net||0;const bud=Math.max(0,CAR.inv.budget||0);const cost=rq.cost;const just=cmJustified(b);const argOk=(CM_ARG_OF[b.k]||[]).includes(rq.arg);const last=(dirCar().hist||[])[0];const sc=last?last.score:75;
+  const P={};
+  P.Finances=clamp(.8-cost/(bud+Math.max(0,net)+500000)*.5-(net<-100000?.15:0)+(rq.arg==="rent"?.1:0),.08,.9);
+  P.Exploitation=clamp(.45+(just?.35:0)+(argOk?.1:-.05)+(["rame","meca","dbl"].includes(b.k)?.05:0),.1,.92);
+  P["Sécurité"]=clamp((["equipe","dbl","quai"].includes(b.k)?.72:.5)+(rq.arg==="secu"?.15:0),.1,.9);
+  P["Clientèle"]=clamp(.42+(sc<75?.2:0)+(["rame","bus","quai"].includes(b.k)?.15:0)+(rq.arg==="capa"?.08:0),.1,.9);
+  P.Personnel=clamp((["meca","equipe"].includes(b.k)?.8:.5)+(rq.arg==="fiab"?.08:0),.1,.9);
+  const REM={Finances:[`Coût de ${invFmt(cost)} jugé raisonnable.`,net<-100000?`Résultat cumulé négatif (${invFmt(net)}) : on ne peut pas se le permettre.`:`Trop cher par rapport à nos moyens (${invFmt(cost)}).`],Exploitation:[just?"Les goulets de la veille justifient la demande.":"Utile pour l'exploitation.",just?"":"Pas de besoin démontré par les chiffres."],"Sécurité":["Améliore la sécurité de l'exploitation.","Aucun gain de sécurité évident."],"Clientèle":["Les voyageurs en profiteront.","Pas de priorité côté clientèle."],Personnel:["Soulage les équipes.","Ne règle pas un problème de personnel."]};
+  return CM_MEMBERS.map(([n,role])=>{const yes=Math.random()<P[n];return{n,role,yes,p:Math.round(P[n]*100),why:REM[n][yes?0:1]||REM[n][0]};});}
+function invFmt(v){return "CHF "+Math.round(v).toLocaleString("fr-CH");}
+function cmSession(){const out=[];for(const rq of CAR.inv.req){if(rq.status!=="en attente"&&rq.status!=="reporté")continue;
+    // vérifications : la cible doit encore avoir du sens
+    const b=rq.b;if((b.k==="dbl"||b.k==="quai")&&CAR.inv.bought.some(x=>x.k===b.k&&x.id===b.id)){rq.status="classé";rq.reason="Déjà réalisé";continue;}
+    const V=cmVotes(rq);const yes=V.filter(v=>v.yes).length;rq.votes=V;rq.sess=(CAR.day&&CAR.day.n)||0;rq.yes=yes;
+    if(yes>=3){rq.status="approuvé";const bud=Math.max(0,CAR.inv.budget||0);const own=Math.min(bud,rq.cost);CAR.inv.budget=bud-own;rq.own=own;rq.grant=rq.cost-own;CAR.inv.bought.push(Object.assign({},b,{cost:rq.cost,day:rq.sess,grant:rq.grant}));rq.reason=`Approuvé par ${yes} voix sur 5${rq.grant>0?` : financé à hauteur de ${invFmt(own)} par ton budget et ${invFmt(rq.grant)} par une dotation du comité`:", financé par ton budget"}.`;}
+    else if(yes===2&&rq.status==="en attente"){rq.status="reporté";rq.reason="2 voix sur 5 : le comité demande de revenir avec un dossier plus solide (la demande reste inscrite à l'ordre du jour).";}
+    else{rq.status="refusé";rq.reason=yes===2?"2 voix sur 5 : refusé après un deuxième examen.":`${yes} voix sur 5 : refusé.`;}
+    out.push(rq);}
+  invApplyStatic();if(out.length)CAR.inv.cmLog=out.map(r=>({lbl:invLabel(r.b),status:r.status,reason:r.reason})).concat(CAR.inv.cmLog).slice(0,10);return out;}
+if(typeof daySave==="function"){const _daySaveN65=daySave;daySave=function(R){_daySaveN65(R);try{if(!isDirector()||!(G.career&&G.career.lv==="dir"))return;const D=carDay();const dec=cmSession();for(const r of dec)D.notes.push(`Comité de direction : « ${invLabel(r.b)} » ${r.status} (${r.yes} voix sur 5)`);carSave();G._cmReport=dec.map(r=>({lbl:invLabel(r.b),status:r.status,yes:r.yes}));}catch(e){}};}
+if(typeof REPORT_EXTRA!=="undefined")REPORT_EXTRA.push(()=>{if(!G._cmReport||!G._cmReport.length)return null;return["Comité de direction",G._cmReport.map(r=>`${r.lbl} : ${r.status} (${r.yes}/5)`).join(" · ")];});
+/* ---------- dépôt d'une demande ---------- */
+function cmSubmit(){const D=UI.inv;if(!D)return;const b={k:D.k,id:D.id};if(D.k==="rame")b.mat=D.mat;if(D.k==="meca")b.op=D.op;if(D.k==="equipe")b.kind=D.kind;b.qty=["dbl","quai"].includes(D.k)?1:Math.max(1,Math.min(10,+D.qty||1));
+  if(["dbl","quai"].includes(b.k)&&CAR.inv.bought.some(x=>x.k===b.k&&x.id===b.id))return toast("Déjà réalisé","w");
+  if(CAR.inv.req.some(r=>(r.status==="en attente"||r.status==="reporté")&&r.b.k===b.k&&r.b.id===b.id&&(r.b.mat||"")===(b.mat||"")&&(r.b.op||"")===(b.op||"")&&(r.b.kind||"")===(b.kind||"")))return toast("Une demande identique est déjà inscrite à l'ordre du jour","w");
+  const cost=invCost(b);if(!cost)return toast("Demande invalide","w");const rq={id:"R"+Date.now().toString(36),b,cost,arg:D.arg||(CM_ARG_OF[b.k]||["ponct"])[0],day:((CAR.day&&CAR.day.n)||0)+1,status:"en attente"};
+  CAR.inv.req.unshift(rq);CAR.inv.req=CAR.inv.req.slice(0,40);carSave();toast("Demande transmise au comité : séance à la fin du service","ok");if(typeof sound==="function")sound("ok");invRender();}
+function cmWithdraw(id){const r=CAR.inv.req.find(x=>x.id===id);if(r&&(r.status==="en attente"||r.status==="reporté")){r.status="retirée";carSave();}invRender();}
+/* ---------- interface : même dialogue, mais soumis au comité ---------- */
+const _invRenderN65=invRender;invRender=function(){if(!isDirector()){return _invRenderN65();}
+  const D=UI.inv;if(!D)return;D.qty=D.qty||1;D.arg=D.arg||(CM_ARG_OF[D.k]||["ponct"])[0];G._invQty=["dbl","quai"].includes(D.k)?1:D.qty;
+  try{_invRenderN65();}finally{G._invQty=null;}
+  const el=$("#invdlg");if(!el)return;let h=el.innerHTML;
+  h=h.replace(/<button class="btn [^"]*" data-a="inv-buy">[^<]*<\/button>/,btn("cm-submit","Soumettre au comité de direction","pri"));
+  h=h.replace(/Budget disponible : <b>([^<]*)<\/b> · [^<]*</,'Budget disponible : <b>$1</b> · tu ne signes pas toi-même : le comité de direction vote ta demande à sa séance, à la fin du service.<');
+  const qtyOk=!["dbl","quai"].includes(D.k);const opt=(v,l,sel)=>`<option value="${v}"${sel?" selected":""}>${l}</option>`;
+  const row=`<div class="list"><div class="li" style="cursor:default;gap:8px;flex-wrap:wrap">${qtyOk?`<span>Quantité</span><select data-cmopt="qty">${[1,2,3,4,5,6,8,10].map(n=>opt(n,n,n===+D.qty)).join("")}</select>`:""}<span>Argument</span><select data-cmopt="arg">${Object.entries(CM_ARGS).map(([k,v])=>opt(k,esc(v),k===D.arg)).join("")}</select></div></div>`;
+  h=h.replace('<div class="small muted" style="margin:6px 0">',row+'<div class="small muted" style="margin:6px 0">');
+  const R=CAR.inv.req;const pend=R.filter(r=>r.status==="en attente"||r.status==="reporté");const done=R.filter(r=>!["en attente","reporté"].includes(r.status)&&r.status!=="retirée").slice(0,6);
+  const vote=r=>r.votes?`<div class="small muted">${r.votes.map(v=>`${v.yes?"✔":"✘"} ${esc(v.n)} : ${esc(v.why)}`).join("<br>")}</div>`:"";
+  const rl=`<h2 class="sec">Ordre du jour du comité <span class="pill ${pend.length?"warn":"ok"}">${pend.length}</span></h2>${pend.length?`<div class="list">${pend.map(r=>`<div class="li" style="cursor:default;flex-wrap:wrap;gap:6px"><div class="grow"><b>${esc(invLabel(r.b))}</b> · ${invFmt(r.cost)}<div class="small muted">${esc(CM_ARGS[r.arg]||"")} · déposée au jour ${r.day} · <b>${esc(r.status)}</b>${r.reason&&r.status==="reporté"?" — "+esc(r.reason):""}</div>${vote(r)}</div>${btn("cm-withdraw:"+r.id,"Retirer","ghost")}</div>`).join("")}</div>`:`<div class="small muted">Aucune demande en attente. Le comité siège à la fin de chaque service.</div>`}
+   ${done.length?`<h2 class="sec">Décisions du comité</h2><div class="list">${done.map(r=>`<div class="li" style="cursor:default"><span class="sev ${r.status==="approuvé"?"ok":"crit"}"></span><div class="grow"><b>${esc(invLabel(r.b))}</b> · ${invFmt(r.cost)} — <b>${esc(r.status)}</b><div class="small muted">${esc(r.reason||"")}</div>${vote(r)}</div></div>`).join("")}</div>`:""}`;
+  h=h.replace(/(<h2 class="sec">Réalisés<\/h2>)/,rl+"$1");if(!/Ordre du jour du comité/.test(h))h=h.replace(/<\/div>$/,rl+"</div>");
+  el.innerHTML=h;
+  el.querySelectorAll("[data-invopt]").forEach(x=>x.onchange=()=>{D[x.dataset.invopt]=x.value;if(x.dataset.invopt==="k"){D.id=null;D.arg=(CM_ARG_OF[D.k]||["ponct"])[0];}invRender();});
+  el.querySelectorAll("[data-cmopt]").forEach(x=>x.onchange=()=>{D[x.dataset.cmopt]=x.dataset.cmopt==="qty"?+x.value:x.value;invRender();});};
+const _actExtN65=actExt;actExt=function(k,rest,id){if(k==="cm-submit"){cmSubmit();return true;}if(k==="cm-withdraw"){cmWithdraw(id);return true;}return _actExtN65(k,rest,id);};
+// carte d'accueil : bouton adapté et demandes en cours
+const _invCardHTMLN65=invCardHTML;invCardHTML=function(){let h=_invCardHTMLN65();if(!isDirector())return h;const R=CAR.inv.req||[];const pend=R.filter(r=>r.status==="en attente"||r.status==="reporté").length;const L=(CAR.inv.cmLog||[]).slice(0,3);
+  h=h.replace('<b class="grow">Investissements</b>','<b class="grow">Investissements · comité de direction</b>').replace(/>Investir…</,">Demande d'achat au comité…<");
+  return h.replace(/(<div class="acts" style="margin-top:6px">)/,`${pend?`<div class="small"><b>${pend}</b> demande(s) inscrite(s) à la prochaine séance du comité.</div>`:""}${L.length?`<div class="small muted">Dernières décisions : ${L.map(l=>esc(l.lbl)+" — "+esc(l.status)).join(" · ")}</div>`:""}$1`);};
 
 /* =====================================================================
    CONTRÔLES STATIQUES, ÉVÉNEMENTS, BOUCLE, DÉMARRAGE
