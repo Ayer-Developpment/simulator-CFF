@@ -9351,6 +9351,18 @@ const _actExtN65=actExt;actExt=function(k,rest,id){if(k==="cm-submit"){cmSubmit(
 const _invCardHTMLN65=invCardHTML;invCardHTML=function(){let h=_invCardHTMLN65();if(!isDirector())return h;const R=CAR.inv.req||[];const pend=R.filter(r=>r.status==="en attente"||r.status==="reporté").length;const L=(CAR.inv.cmLog||[]).slice(0,3);
   h=h.replace('<b class="grow">Investissements</b>','<b class="grow">Investissements · comité de direction</b>').replace(/>Investir…</,">Demande d'achat au comité…<");
   return h.replace(/(<div class="acts" style="margin-top:6px">)/,`${pend?`<div class="small"><b>${pend}</b> demande(s) inscrite(s) à la prochaine séance du comité.</div>`:""}${L.length?`<div class="small muted">Dernières décisions : ${L.map(l=>esc(l.lbl)+" — "+esc(l.status)).join(" · ")}</div>`:""}$1`);};
+/* n66 : les listes déroulantes ne se réinitialisent plus pendant qu'on les utilise (engagement du personnel, etc.) */
+(function(){
+  const busy=()=>{const a=document.activeElement;if(a&&/^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)&&a.closest&&a.closest("#dirdlg,#res-dyn,.staffsec"))return true;return (Date.now()-(UI._selT||0))<10000;};
+  const touch=e=>{const t=e.target;if(t&&/^(SELECT|OPTION|INPUT|TEXTAREA)$/.test(t.tagName||"")&&t.closest&&t.closest("#dirdlg,#res-dyn,.staffsec"))UI._selT=Date.now();};
+  ["pointerdown","focusin","change","input","touchstart"].forEach(ev=>document.addEventListener(ev,touch,true));
+  /* le choix est mémorisé dès qu'il change, même si l'écran se redessine ensuite */
+  document.addEventListener("change",e=>{const t=e.target;if(!t||!t.id)return;if(["shReg","shDom","shLvl"].includes(t.id)){UI.sh=UI.sh||{};UI.sh[t.id==="shReg"?"reg":t.id==="shDom"?"dom":"lvl"]=t.value;}},true);
+  if(typeof dirRender==="function"){const _d=dirRender;dirRender=function(){if(busy())return;return _d.apply(this,arguments);};}
+  if(typeof renderRes==="function"){const _r=renderRes;renderRes=function(){if(UI.resTab==="drv"&&busy())return;return _r.apply(this,arguments);};}
+  /* un clic sur un bouton (Engager…) doit toujours redessiner : on relâche le verrou */
+  document.addEventListener("click",e=>{const b=e.target&&e.target.closest&&e.target.closest("button,[data-a]");if(b)UI._selT=0;},true);
+})();
 
 /* =====================================================================
    CONTRÔLES STATIQUES, ÉVÉNEMENTS, BOUCLE, DÉMARRAGE
